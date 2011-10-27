@@ -21,7 +21,7 @@ echo $output->saveXML();
 
 
 function init () {
-	$pazpar2URL = 'http://localhost/pazpar2/search.pz2';
+	$pazpar2URL = 'http://localhost:9004/search.pz2';
 	$initURL = $pazpar2URL . '?command=init';
 	$serviceName = '';
 	if (array_key_exists('service', $_GET)) {
