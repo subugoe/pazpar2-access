@@ -236,7 +236,8 @@ function activateDatabasesForSession ($wantDatabases, $allowedDatabases, $sessio
  * Helper function: Returns XML loaded from the given $URL
  * - times out after 2 seconds
  * - ignores 'error' status codes (pazpar2 returns 417 for wrong queries, which leads to 
- *   an empty result rather than the error XML with the default setting)
+ *   an empty result rather than the error XML with the default setting); This requires
+ *   PHP 5.3 or above, so we’re in for FAIL on SLES 11.
  * 
  * @param $URL string
  * @return DOMDocument
