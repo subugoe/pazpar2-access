@@ -25,6 +25,10 @@ if (array_key_exists('command', $_GET)) {
 	if ($command === 'init') {
 		$output = run();
 	}
+	else if ($command === 'settings') {
+		header("Status: 403 Forbidden");
+		$output = errorXML(50002, 'Command not permitted by pazpar2-access.php', 'settings');
+	}
 	else {
 		$output = errorXML(50000, 'pazpar2-access.php can only process init commands');
 	}
