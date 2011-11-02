@@ -1,7 +1,7 @@
 <?php
 /**
  * Script to serve as an intermediary for pazpar2 init commands.
- * Its configuration and the reply of GBV’s 'iport_request' service determine 
+ * Its configuration and the reply of GBV’s GSO login service determine 
  * whether additional (access-restricted) databases will be activated in a pazpar2 session.
  *
  * Please refer to the Readme or github page for further information on the configuration.
@@ -137,18 +137,18 @@ function initialisePazpar2 ($service) {
  * Returns information about the GBV databases the user may access. Result is an array containing:
  * - permittedDatabases: Array of strings with Pica Database IDs (Array)
  * - institutionName: GBV’s name for the user’s access group (string)
- * The data for this is provided by GBV’s 'iport_request' service.
+ * The data for this is provided by GBV’s GSO login service.
  *
  * @return Array
  */
 function getGBVAccessInfo () {
 	$result = Array();
-	$GBVQueryURL = 'http://gso.gbv.de/login/iport_request?IPaddress=' . clientIPAddress();
+	$GBVQueryURL = 'http://gso.gbv.de/login/XML=1.0/AUTH?IP=' . clientIPAddress();
 	$GBVResponseXML = loadXMLFromURL($GBVQueryURL);
 
 	if ($GBVResponseXML) {
 		$GBVResponseXPath = new DOMXpath($GBVResponseXML);
-		$GBVDatabaseElements = $GBVResponseXPath->query('/result/userInfo/group');
+		$GBVDatabaseElements = $GBVResponseXPath->query('/result/database');
 		$GBVDatabaseElementCount = $GBVDatabaseElements->length;
 		$GBVDatabaseNames = Array();
 		for ($i = 0; $i < $GBVDatabaseElementCount; $i++) {
@@ -156,7 +156,7 @@ function getGBVAccessInfo () {
 		}
 		$result['permittedDatabases'] = $GBVDatabaseNames;
 		
-		$institutionElements = $GBVResponseXPath->query('/result/userInfo/cn');
+		$institutionElements = $GBVResponseXPath->query('/result/library_name');
 		if ($institutionElements->length > 0) {
 			$result['institutionName'] = $institutionElements->item(0)->textContent;
 		}
