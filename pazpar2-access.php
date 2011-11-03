@@ -54,75 +54,80 @@ echo $result['content'];
 
 
 /**
- * 1. initialise pazpar2
+ * 1. load access permissions from GBV
  * 2. determine configuration
- * 3. load access permissions from GBV
- * 4. activate additional databases
+ * 3. initialise pazpar2 with that configuration
+ * 4. augment init reply with vauge information about the configuration
  *
- * @return DOMDocument
+ * @return Array containing at least 'httpStatus' and 'content' fields
  */
 function runInit () {
-	$service = getServiceName();
-	$result = initialisePazpar2($service);
-	$initXML = $result['initXML'];
-	if ($initXML && $result['status'] === 'OK' && $result['sessionID'] != '') {
-		global $serviceConfig;
-		if (array_key_exists($service, $serviceConfig)) {
-			// We have a configuration for this service name, use it.
-			
-			// Load access permissions from GBV and add institution name to init response.
-			$accessRights = getGBVAccessInfo();
-			if ($accessRights) {
-				$institutionElement = $initXML->createElement('institution');
-				$institutionElement->appendChild($initXML->createTextNode($accessRights['institutionName']));
-				$initXML->firstChild->appendChild($institutionElement);
-					
-				// Activate additional databases and add vague information about the result to init response.
-				$activationResult = activateDatabasesForSession($serviceConfig[$service]['databases'], $accessRights['permittedDatabases'], $result['sessionID']);
-				$allServers = $initXML->createElement('allServers');
-				$allServers->appendChild($initXML->createTextNode($activationResult['usingAllServers']));
-				$initXML->firstChild->appendChild($allServers);
+	$configurationParameters = '';
+	$usingAllServers = -1;
+
+	$serviceName = '';
+	if (array_key_exists('service', $_GET)) {
+		$serviceName = $_GET['service'];
+	}
+	global $serviceConfig;
+	if (array_key_exists($serviceName, $serviceConfig)) {
+		// We have a configuration for this service name, use it.
+		$accessRights = getGBVAccessInfo();
+		if ($accessRights) {
+			$usingAllServers = 1;
+			foreach ($serviceConfig[$serviceName]['databases'] as $wantDatabase) {
+				global $GBVDatabaseMapping;
+				$wantDatabaseID = $GBVDatabaseMapping[$wantDatabase];
+				if (in_array($wantDatabaseID, $accessRights['permittedDatabases'])) {
+					$configurationParameters .= '&pz:allow' . urlencode('[' . $wantDatabase . ']') . '=1';
+				}
+				else {
+					$usingAllServers = 0;
+				}
 			}
-			$result['content'] = $initXML->saveXML();
 		}
 	}
 	
+	$result = initialisePazpar2($serviceName, $configurationParameters);
+	
+	if ($result['httpStatus'] == 200 && array_key_exists($serviceName, $serviceConfig)) {
+		$initXML = $result['initXML'];
+		$allServers = $initXML->createElement('allServers');
+		$allServers->appendChild($initXML->createTextNode($usingAllServers));
+		$initXML->firstChild->appendChild($allServers);
+
+		$institutionElement = $initXML->createElement('institution');
+		$institutionElement->appendChild($initXML->createTextNode($accessRights['institutionName']));
+		$initXML->firstChild->appendChild($institutionElement);
+
+		$result['content'] = $initXML->saveXML();		
+	}
+
 	return $result;
 }
 
 
 
 /**
- * Returns the service name used in the GET request.
- *
- * @return string service name from GET request’s 'service' parameter, empty string if there is none
- */
-function getServiceName () {
-	$serviceName = '';
-	if (array_key_exists('service', $_GET)) {
-		$serviceName = $_GET['service'];
-	}
-
-	return $serviceName;
-}
-
-
-
-/**
- * Initialises pazpar2 with the service name passed and returns an array with the fields:
- * - status: status code (string)
+ * Initialises pazpar2 with the service name and parameters passed and returns an array with the fields:
+ * - httpStatus: the http status code (int)
+ * - content: the content sent by pazpar2 (string)
+ * if initialisation succeeded, these fields are added:
+ * - status: pazpar2 status message (string)
  * - sessionID: pazpar2 session ID (string)
- * - initXML: pazpar2’s reply (DOMDocument)
- * A blank service name, initialises pazpar2 without the service parameter.
+ * - initXML: pazpar2’s reply as XML (DOMDocument)
+ * A blank service name initialises pazpar2 without the service parameter.
  *
  * @param $service string pazpar2 service name
+ * @param $parameters string additional parameters [optional]
  * @return Array
  */
-function initialisePazpar2 ($service) {
+function initialisePazpar2 ($service, $parameters = '') {
 	$initURL = pazpar2URL . 'command=init';
 	if ($service != '') {
 		$initURL .= '&service=' . $service;
 	}
+	$initURL .= $parameters;
 
 	$result = loadURL($initURL);
 	if ($result['httpStatus'] == 200) {
@@ -155,7 +160,10 @@ function initialisePazpar2 ($service) {
 function getGBVAccessInfo () {
 	$result = Array();
 	$GBVQueryURL = 'http://gso.gbv.de/login/XML=1.0/AUTH?IP=' . clientIPAddress();
-	$GBVResponseXML = loadXMLFromURL($GBVQueryURL);
+	$GBVResponse = loadURL($GBVQueryURL);
+	$GBVResponseString = $GBVResponse['content'];
+	$GBVResponseXML = new DOMDocument($GBVResponseString);
+	$GBVResponseXML->loadXML($GBVResponseString);
 
 	if ($GBVResponseXML) {
 		$GBVResponseXPath = new DOMXpath($GBVResponseXML);
@@ -180,7 +188,7 @@ function getGBVAccessInfo () {
 
 /**
  * Returns the client’s presumed IP address from the HTTP_X_FORWARDED_FOR header
- * as our services is presumed to be accessed from a proxy on localhost.
+ * as our service is presumed to be accessed from a proxy on localhost.
  *
  * @return string client’s IP address
  */
@@ -192,73 +200,6 @@ function clientIPAddress () {
 	}
 	
 	return $result;
-}
-
-
-
-/**
- * Configures pazpar2 to activate the databases which
- * 1. need to activated (according to the configuration file) and
- * 2. the user may access (according to the $allowedDatabases array)
- * This requires the $GBVDatabaseMapping Array to provide a translation between GBV SRU database names
- * and GBV Pica Database IDs.
- *
- * Returns an array with:
- * - usingAllServers: 1/0, depending on whether all possible servers are used
- * - configurationSuccess: True/False, reflecting the result of setting pazpar2’s configuration
- *
- * @param $wantDatabases Array of strings with GBV SRU database names
- * @param $allowedDatabases Array of strings with Pica IDs of GBV databases the user’s IP may access
- * @param $session string pazpar2 session ID
- * @result Array
- */
-function activateDatabasesForSession ($wantDatabases, $allowedDatabases, $session) {
-	$result = Array();
-	$configurationURL = pazpar2URL . 'command=settings&session=' . $session;
-	$configurationParameters = '';
-	$configurationSuccess = False;
-	$usingAllServers = 1;
-
-	foreach ($wantDatabases as $wantDatabase) {
-		global $GBVDatabaseMapping;
-		$wantDatabaseID = $GBVDatabaseMapping[$wantDatabase];
-		if (in_array($wantDatabaseID, $allowedDatabases)) {
-			$configurationParameters .= '&pz:allow' . urlencode('[' . $wantDatabase . ']') . '=1';
-		}
-		else {
-			$usingAllServers = 0;
-		}
-	}
-	
-	if ($configurationParameters !== '') {
-		$configurationURL .= $configurationParameters;
-		$configurationResult = loadXMLFromURL($configurationURL);
-		if ($configurationResult) {
-			$configurationXPath = new DOMXpath($configurationResult);
-			$status = $configurationXPath->query('status')->item(0)->textContent;
-			$configurationSuccess = ($status === 'OK');
-		}
-	}
-	
-	$result['usingAllServers'] = $usingAllServers;
-	$result['configurationSuccess'] = $configurationSuccess;
-	return $result;
-}
-
-
-
-/**
- * Helper function: Returns XML loaded from the given URL
- * 
- * @param $URL string
- * @return DOMDocument
- */
-function loadXMLFromURL ($URL) {
-	$download = loadURL($URL);
-	$XMLString = $download['content'];
-	$XML = new DOMDocument($URL);
-	$XML->loadXML($XMLString);
-	return $XML;
 }
 
 

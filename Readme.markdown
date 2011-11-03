@@ -17,15 +17,12 @@ The script doing the actual work.
 * pazpar2 is running on localhost:9004 which is not accessible from the outside
 
 #### What it does:
-1. process pazpar2 'init' commands
+1. process pazpar2 'init' commands:
+	* In case an init command is for a service that is listed in the configuration file, GBV’s GSO login service is queried to check which databases are available for the user’s IP address. If so, pazpar2 is configured to activate those databases and the init command’s response is returned after augmenting it by the tags <institution> containing the name of the user’s institution and <allServers> containing '1' if all databases could be activated and '0' otherwise.
+	* In case an init command is for other services, the request is forwarded to pazpar2 and its reply is returned.
 2. block pazpar2 'settings' commands
 3. forward all other commands to pazpar2
 
-* In case they are for a service that is listed in the configuration file, GBV’s GSO login service is queried to check whether those databases are available for the user’s IP address. If so,
-	1. a pazpar2 session is initialised,
-	2. the appropriate databases are activated for the pazpar2 session, and
-	3. the init command’s response is returned after augmenting it by the tags <institution> containing the name of the user’s institution and <allServers> containing '1' if all databases could be activated and '0' otherwise.
-* In case they are for other services, the request is forwarded to pazpar2 and its reply is returned.
 
 ### pazpar2-access-configuration.php
 Contains the configuration for the script in two PHP arrays.
