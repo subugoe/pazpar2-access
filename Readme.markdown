@@ -12,13 +12,14 @@ Repository [available at github](https://github.com/ssp/pazpar2-access).
 The script doing the actual work.
 
 #### Prerequisites:
-* Some pazpar2 services are set up with GBV databases which are disabled by default
+* Some pazpar2 services are set up with GBV databases which have to be disabled by default
 * The configuration file contains service names with those special databases listed (see below)
-* The system is set up to redirect pazpar2 'init' and 'settings' commands to this script (see below)
-* The system is set up to block the pazpar2 port from outside requests
+* pazpar2 is running on localhost:9004 which is not accessible from the outside
 
 #### What it does:
-The script processes pazpar2 'init' commands and blocks all others.
+1. process pazpar2 'init' commands
+2. block pazpar2 'settings' commands
+3. forward all other commands to pazpar2
 
 * In case they are for a service that is listed in the configuration file, GBV’s GSO login service is queried to check whether those databases are available for the user’s IP address. If so,
 	1. a pazpar2 session is initialised,
@@ -48,9 +49,5 @@ We have to use their [unAPI-names](http://uri.gbv.de/database/) to access the SR
 	);
 
 ### pazpar2-access.conf
-apache2 configuration file that uses mod_rewrite to proxy requests for /pazpar2/search.pz2. By default it redirects all commands to the /pazpar2-access/pazpar2-access.php path for further processing. Just the commands 
-
-* to /pazpar2-access/pazpar2-access.php if the query contains 'command=init' and
-* to localhost:9004/search.pz2 where the pazpar2 daemon is expected to run otherwise.
-
+apache2 configuration file that uses mod_rewrite to proxy requests for /pazpar2/search.pz2 to /pazpar2-access/pazpar2-access.php path for further processing.
 

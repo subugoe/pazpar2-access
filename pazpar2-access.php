@@ -1,6 +1,10 @@
 <?php
 /**
- * Script to serve as an intermediary for pazpar2 init commands.
+ * Script to serve as an intermediary for pazpar2 commands.
+ * - processes init commands
+ * - blocks settings commands
+ * - passes all other commands on to pazpar2
+ *
  * Its configuration and the reply of GBV’s GSO login service determine 
  * whether additional (access-restricted) databases will be activated in a pazpar2 session.
  *
@@ -12,39 +16,44 @@
 
 
 
-// Load configuration which defines the $serviceConfig and $GBVDatabaseMapping Arrays.
+// Load configuration which defines the $serviceConfig and $GBVDatabaseMapping arrays.
 include('./pazpar2-access-configuration.php');
 
 // Local pazpar2 URL.
-define('pazpar2URL', 'http://localhost:9004/search.pz2');
+define('pazpar2URL', 'http://localhost:9004/search.pz2?');
 
-$output = Null;
+$result = Array();
 
 if (array_key_exists('command', $_GET)) {
 	$command = $_GET['command'];
 	if ($command === 'init') {
-		$output = run();
+		// handle init commands ourselves
+		$result = runInit();
 	}
 	else if ($command === 'settings') {
-		header("Status: 403 Forbidden");
-		$output = errorXML(50002, 'Command not permitted by pazpar2-access.php', 'settings');
+		// block settings commands
+		$result['httpStatus'] = 403;
+		$result['content'] = errorXML(50002, 'Command not permitted by pazpar2-access.php', 'settings');
 	}
 	else {
-		$output = errorXML(50000, 'pazpar2-access.php can only process init commands');
+		// pass all other commands on to pazpar2
+		$commandURL = pazpar2URL . http_build_query($_GET);
+		$result = loadURL($commandURL);
 	}
 }
 else {
-	$output = errorXML(2, 'Missing parameter', 'command');
+	$result['httpStatus'] = 417;
+	$result['content'] = errorXML(2, 'Missing parameter', 'command');
 }
 
+header('HTTP/1.1 ' . $result['httpStatus']);
 header('Content-type: text/xml');
-echo $output->saveXML();
+echo $result['content'];
 
 
 
 
 /**
- * Main action:
  * 1. initialise pazpar2
  * 2. determine configuration
  * 3. load access permissions from GBV
@@ -52,12 +61,11 @@ echo $output->saveXML();
  *
  * @return DOMDocument
  */
-function run () {
-	// Initialise pazpar2.
+function runInit () {
 	$service = getServiceName();
-	$initResult = initialisePazpar2($service);
-	$result = $initResult['initXML'];
-	if ($result && $initResult['status'] === 'OK' && $initResult['sessionID'] != '') {
+	$result = initialisePazpar2($service);
+	$initXML = $result['initXML'];
+	if ($initXML && $result['status'] === 'OK' && $result['sessionID'] != '') {
 		global $serviceConfig;
 		if (array_key_exists($service, $serviceConfig)) {
 			// We have a configuration for this service name, use it.
@@ -65,20 +73,18 @@ function run () {
 			// Load access permissions from GBV and add institution name to init response.
 			$accessRights = getGBVAccessInfo();
 			if ($accessRights) {
-				$institutionElement = $result->createElement('institution');
-				$institutionElement->appendChild($result->createTextNode($accessRights['institutionName']));
-				$result->firstChild->appendChild($institutionElement);
+				$institutionElement = $initXML->createElement('institution');
+				$institutionElement->appendChild($initXML->createTextNode($accessRights['institutionName']));
+				$initXML->firstChild->appendChild($institutionElement);
 					
 				// Activate additional databases and add vague information about the result to init response.
-				$activationResult = activateDatabasesForSession($serviceConfig[$service]['databases'], $accessRights['permittedDatabases'], $initResult['sessionID']);
-				$allServers = $result->createElement('allServers');
-				$allServers->appendChild($result->createTextNode($activationResult['usingAllServers']));
-				$result->firstChild->appendChild($allServers);
+				$activationResult = activateDatabasesForSession($serviceConfig[$service]['databases'], $accessRights['permittedDatabases'], $result['sessionID']);
+				$allServers = $initXML->createElement('allServers');
+				$allServers->appendChild($initXML->createTextNode($activationResult['usingAllServers']));
+				$initXML->firstChild->appendChild($allServers);
 			}
+			$result['content'] = $initXML->saveXML();
 		}
-	}
-	else {
-		$result = errorXML(50001, 'pazpar2-access.php could not initialise the pazpar2 service');
 	}
 	
 	return $result;
@@ -113,21 +119,26 @@ function getServiceName () {
  * @return Array
  */
 function initialisePazpar2 ($service) {
-	$result = Array();
-	$initURL = pazpar2URL . '?command=init';
+	$initURL = pazpar2URL . 'command=init';
 	if ($service != '') {
 		$initURL .= '&service=' . $service;
 	}
-	$initXML = loadXMLFromURL($initURL);
-	$initXPath = new DOMXpath($initXML);
-	$initElements = $initXPath->query('/init');
-	if ($initElements->length > 0) {
-		$initElement = $initElements->item(0);
-		$result['status'] = $initXPath->query('/init/status')->item(0)->textContent;
-		$result['sessionID'] = $initXPath->query('/init/session')->item(0)->textContent;
-		$result['initXML'] = $initXML;
-	}
+
+	$result = loadURL($initURL);
+	if ($result['httpStatus'] == 200) {
+		$initXML = new DOMDocument();
+		$initXML->loadXML($result['content']);
 	
+		$initXPath = new DOMXpath($initXML);
+		$initElements = $initXPath->query('/init');
+		if ($initElements->length > 0) {
+			$initElement = $initElements->item(0);
+			$result['status'] = $initXPath->query('/init/status')->item(0)->textContent;
+			$result['sessionID'] = $initXPath->query('/init/session')->item(0)->textContent;
+			$result['initXML'] = $initXML;
+		}
+	}
+
 	return $result;
 }
 
@@ -203,7 +214,7 @@ function clientIPAddress () {
  */
 function activateDatabasesForSession ($wantDatabases, $allowedDatabases, $session) {
 	$result = Array();
-	$configurationURL = pazpar2URL . '?command=settings&session=' . $session;
+	$configurationURL = pazpar2URL . 'command=settings&session=' . $session;
 	$configurationParameters = '';
 	$configurationSuccess = False;
 	$usingAllServers = 1;
@@ -237,22 +248,35 @@ function activateDatabasesForSession ($wantDatabases, $allowedDatabases, $sessio
 
 
 /**
- * Helper function: Returns XML loaded from the given $URL
- * - times out after 2 seconds
- * - ignores 'error' status codes (pazpar2 returns 417 for wrong queries, which leads to 
- *   an empty result rather than the error XML with the default setting); This requires
- *   PHP 5.3 or above, so we’re in for FAIL on SLES 11.
+ * Helper function: Returns XML loaded from the given URL
  * 
  * @param $URL string
  * @return DOMDocument
  */
 function loadXMLFromURL ($URL) {
-	$httpOptions = Array('timeout' => 2, 'ignore_errors' => True);
-	$loadContext = stream_context_create(Array('http' => $httpOptions));
-	$URLContent = file_get_contents($URL, Null, $loadContext);
-	$XML = new DOMDocument();
-	$XML->loadXML($URLContent);
+	$download = loadURL($URL);
+	$XMLString = $download['content'];
+	$XML = new DOMDocument($URL);
+	$XML->loadXML($XMLString);
 	return $XML;
+}
+
+
+
+/**
+ * Helper function: loads the given URL and returns the content as text as well as the status code
+ *
+ * @param $URL string
+ * @return Array containing a string 'content' and the status code 'httpStatus'
+ */
+function loadURL ($URL) {
+	$connection = curl_init($URL);
+	curl_setopt($connection, CURLOPT_RETURNTRANSFER, True);
+	$URLContent = curl_exec($connection);
+	$httpStatus = curl_getinfo($connection, CURLINFO_HTTP_CODE);
+	curl_close($connection);
+
+	return Array('content' => $URLContent, 'httpStatus' => $httpStatus);
 }
 
 
@@ -263,7 +287,7 @@ function loadXMLFromURL ($URL) {
  * @param $code string error code
  * @param $message string error message
  * @param $content string content of the error XML element
- * @return DOMDocument
+ * @return string
  */
 function errorXML ($code, $message, $content = '') {
 	$DI = new DOMImplementation();
@@ -273,7 +297,7 @@ function errorXML ($code, $message, $content = '') {
 	$error->setAttribute('msg', $message);
 	$error->appendChild($doc->createTextNode($content));
 	$doc->appendChild($error);
-	return $doc;
+	return $doc->saveXML();
 }
 
 ?>
