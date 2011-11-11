@@ -92,13 +92,17 @@ function runInit () {
 	
 	if ($result['httpStatus'] == 200 && array_key_exists($serviceName, $serviceConfig)) {
 		$initXML = $result['initXML'];
-		$allServers = $initXML->createElement('allServers');
-		$allServers->appendChild($initXML->createTextNode($usingAllServers));
-		$initXML->firstChild->appendChild($allServers);
-
-		$institutionElement = $initXML->createElement('institution');
+		$accessRightsElement = $initXML->createElement('accessRights');
+		$initXML->firstChild->appendChild($accessRightsElement);
+		
+		$institutionElement = $initXML->createElement('institutionName');
+		$accessRightsElement->appendChild($institutionElement);
 		$institutionElement->appendChild($initXML->createTextNode($accessRights['institutionName']));
-		$initXML->firstChild->appendChild($institutionElement);
+
+		
+		$allServers = $initXML->createElement('allTargetsActive');
+		$allServers->appendChild($initXML->createTextNode($usingAllServers));
+		$accessRightsElement->appendChild($allServers);
 
 		$result['content'] = $initXML->saveXML();		
 	}
@@ -176,9 +180,12 @@ function getGBVAccessInfo () {
 		$result['permittedDatabases'] = $GBVDatabaseNames;
 		
 		$institutionElements = $GBVResponseXPath->query('/result/library_name');
+		$institutionName = 'GAST';
 		if ($institutionElements->length > 0) {
-			$result['institutionName'] = $institutionElements->item(0)->textContent;
+			 $institutionName = $institutionElements->item(0)->textContent;
+			 $institutionName = str_replace('FLplus ', '', $institutionName);
 		}
+		$result['institutionName'] = $institutionName;
 	}
 	
 	return $result;
