@@ -24,8 +24,11 @@ define('pazpar2URL', 'http://localhost:9004/search.pz2?');
 
 $result = Array();
 
-if (array_key_exists('command', $_GET)) {
-	$command = $_GET['command'];
+// Join get and post parameters. We may receive long queries via POST.
+$getpost = array_merge($_GET, $_POST);
+
+if (array_key_exists('command', $getpost)) {
+	$command = $getpost['command'];
 	if ($command === 'init') {
 		// handle init commands ourselves
 		$result = runInit();
@@ -37,7 +40,7 @@ if (array_key_exists('command', $_GET)) {
 	}
 	else {
 		// pass all other commands on to pazpar2
-		$commandURL = pazpar2URL . http_build_query($_GET);
+		$commandURL = pazpar2URL . http_build_query($getpost);
 		$result = loadURL($commandURL);
 	}
 }
@@ -65,9 +68,10 @@ function runInit () {
 	$configurationParameters = '';
 	$usingAllServers = -1;
 
+	global $getpost;
 	$serviceName = '';
-	if (array_key_exists('service', $_GET)) {
-		$serviceName = $_GET['service'];
+	if (array_key_exists('service', $getpost)) {
+		$serviceName = $getpost['service'];
 	}
 	global $serviceConfig;
 	if (array_key_exists($serviceName, $serviceConfig)) {
