@@ -4,6 +4,9 @@ $serviceConfig = Array(
 	'AAC' => Array (
 		'databases' => Array('sru.gbv.de/zdb-1-pio')
 	),
+	'SUB' => Array(
+		'databases' => Array('sru.gbv.de/olc')
+	),
 	'all' => Array (
 		'databases' => Array(
 			'sru.gbv.de/olc',
