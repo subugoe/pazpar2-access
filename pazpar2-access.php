@@ -207,7 +207,8 @@ function clientIPAddress () {
 	$result = $_SERVER['REMOTE_ADDR'];
 	
 	if (array_key_exists('HTTP_X_FORWARDED_FOR', $_SERVER)) {
-		$result = $_SERVER['HTTP_X_FORWARDED_FOR'];
+		$forwardingHosts = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+		$result = trim($forwardingHosts[0]);
 	}
 	
 	return $result;
