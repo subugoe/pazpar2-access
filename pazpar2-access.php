@@ -70,7 +70,7 @@ echo $result['content'];
  * @return Array containing at least 'httpStatus' and 'content' fields
  */
 function runInit () {
-	$configurationParameters = '';
+	$configurationParameters = Array();
 	$usingAllServers = -1;
 
 	$serviceName = '';
@@ -98,7 +98,8 @@ function runInit () {
 				$conditionSatisfied = FALSE;
 				foreach ($variableConditions as $condition) {
 					if (isConditionSatisfied($condition)) {
-						$configurationParameters .= '&' . urlencode($variableName . '[' . $databaseName . ']') . '=' . urlencode($condition['value']);
+						$parameterName = $variableName . '[' . $databaseName . ']';
+						$configurationParameters[$parameterName] = $condition['value'];
 						$conditionSatisfied = TRUE;
 						break;
 					}
@@ -222,17 +223,18 @@ function isGBVConditionSatisfied ($condition) {
  * A blank service name initialises pazpar2 without the service parameter.
  *
  * @param $service string pazpar2 service name
- * @param $parameters string additional parameters [optional]
+ * @param Array $parameters URL parameters [optional]
  * @return Array
  */
-function initialisePazpar2 ($service, $parameters = '') {
-	$initURL = pazpar2URL . 'command=init';
+function initialisePazpar2 ($service, $parameters = Array()) {
+	$parameters['command'] = 'init';
 	if ($service != '') {
-		$initURL .= '&service=' . $service;
+		$parameters['service'] = $service;
 	}
-	$initURL .= $parameters;
 
+	$initURL = pazpar2URL . http_build_query($parameters);
 	$result = loadURL($initURL);
+
 	if ($result['httpStatus'] == 200) {
 		$initXML = new DOMDocument();
 		$initXML->loadXML($result['content']);
