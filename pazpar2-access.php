@@ -177,7 +177,7 @@ function isIPConditionSatisfied ($condition) {
 	$clientIP = clientIPAddress();
 
 	foreach ($condition as $IPPattern) {
-		if (preg_match('/' . $IPPattern . '/', $clientIP) === 1) {
+		if (preg_match('/^' . $IPPattern . '/', $clientIP) === 1) {
 			$satisfied = TRUE;
 			break;
 		}
