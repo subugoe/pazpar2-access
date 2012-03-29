@@ -31,10 +31,9 @@ $GBVAccessInfo = NULL;
 $result = Array();
 
 // Join get and post parameters. We may receive long queries via POST.
-$getpost = array_merge($_GET, $_POST);
 
-if (array_key_exists('command', $getpost)) {
-	$command = $getpost['command'];
+if (array_key_exists('command', $_REQUEST)) {
+	$command = $_REQUEST['command'];
 	if ($command === 'init') {
 		// handle init commands ourselves
 		$result = runInit();
@@ -46,7 +45,7 @@ if (array_key_exists('command', $getpost)) {
 	}
 	else {
 		// pass all other commands on to pazpar2
-		$commandURL = pazpar2URL . http_build_query($getpost);
+		$commandURL = pazpar2URL . http_build_query($_REQUEST);
 		$result = loadURL($commandURL);
 	}
 }
@@ -74,10 +73,9 @@ function runInit () {
 	$configurationParameters = '';
 	$usingAllServers = -1;
 
-	global $getpost;
 	$serviceName = '';
-	if (array_key_exists('service', $getpost)) {
-		$serviceName = $getpost['service'];
+	if (array_key_exists('service', $_REQUEST)) {
+		$serviceName = $_REQUEST['service'];
 	}
 
 	global $serviceConfig;
