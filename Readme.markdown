@@ -38,11 +38,11 @@ The main component is per-database configuration. It is a PHP array with pazpar2
 
 The array contains arrays, each of which can contain three keys:
 
-	* `conditionType`: a string giving the type of the condition to be checked. Supported values are `IP` and `GBV`. If the `conditionType` key is missing, the value is used unconditionally.
-	* `condition`: spelling out the condition
-		* for conditionType `IP` this is an array of strings; if any of those strings matches the user’s IP address, the condition is satisfied
-		* for conditionType `GBV` this is a string; if it matches the ID of a database in the list of allowed databases for the user’s IP, the condition is satisfied
-	* `value`: the string that the pazpar2 setting is set to
+* `conditionType`: a string giving the type of the condition to be checked. Supported values are `IP` and `GBV`. If the `conditionType` key is missing, the value is used unconditionally.
+* `condition`: spelling out the condition
+	* for conditionType `IP` this is an array of strings; if any of those strings matches the user’s IP address, the condition is satisfied
+	* for conditionType `GBV` this is a string; if it matches the ID of a database in the list of allowed databases for the user’s IP, the condition is satisfied
+* `value`: the string that the pazpar2 setting is set to
 		
 _Example_ database configuration which sets `catalogueURLPrefix` for database ID `sru.gbv.de/opac-de-7` to `https://opac.sub.uni-goettingen.de/DB=1/PPNSET?PPN=` if the user’s IP address matches `^134.76.*` as a regular expression:
 
