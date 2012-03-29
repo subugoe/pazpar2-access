@@ -5,13 +5,15 @@
  * - blocks settings commands
  * - passes all other commands on to pazpar2
  *
- * Its configuration and the reply of GBV’s GSO login service determine 
- * whether additional (access-restricted) databases will be activated in a pazpar2 session.
+ * Its configuration, the user’s IP address and the reply of
+ * GBV’s GSO login service determine whether additional pazpar2 settings commands
+ * are used to change options like pz:allow (for access restriction) or otherwise
+ * (e.g. for setting XSL parameters).
  *
- * Please refer to the Readme or github page for further information on the configuration.
+ * Please refer to the readme or github page for further information on the configuration.
  * https://github.com/ssp/pazpar2-access
  *
- * 2011 by Sven-S. Porst, SUB Göttingen <porst@sub.uni-goettingen.de>
+ * 2011-2012 by Sven-S. Porst, SUB Göttingen <porst@sub.uni-goettingen.de>
  */
 
 
@@ -21,6 +23,10 @@ include('./pazpar2-access-configuration.php');
 
 // Local pazpar2 URL.
 define('pazpar2URL', 'http://localhost:9004/search.pz2?');
+
+// Variable to store information loaded from GBV.
+$GBVAccessInfo = NULL;
+
 
 $result = Array();
 
@@ -73,45 +79,136 @@ function runInit () {
 	if (array_key_exists('service', $getpost)) {
 		$serviceName = $getpost['service'];
 	}
+
 	global $serviceConfig;
+	global $databaseDefaults;
 	if (array_key_exists($serviceName, $serviceConfig)) {
-		// We have a configuration for this service name, use it.
-		$accessRights = getGBVAccessInfo();
-		if ($accessRights) {
-			$usingAllServers = 1;
-			foreach ($serviceConfig[$serviceName]['databases'] as $wantDatabase) {
-				global $GBVDatabaseMapping;
-				$wantDatabaseID = $GBVDatabaseMapping[$wantDatabase];
-				if (in_array($wantDatabaseID, $accessRights['permittedDatabases'])) {
-					$configurationParameters .= '&pz:allow' . urlencode('[' . $wantDatabase . ']') . '=1';
+		// We have a configuration for this service name: use it.
+
+		$configuration = $serviceConfig[$serviceName];
+
+		// Replace 'default' string with the default settings for each database.
+		foreach ($configuration as $databaseName => $databaseSettings) {
+			if ($databaseSettings === 'default' && array_key_exists($databaseName, $databaseDefaults)) {
+				$configuration[$databaseName] = $databaseDefaults[$databaseName];
+			}
+		}
+
+		$usingAllServers = 1;
+		foreach ($configuration as $databaseName => $databaseSettings) {
+			foreach ($databaseSettings as $variableName => $variableConditions) {
+				$conditionSatisfied = FALSE;
+				foreach ($variableConditions as $condition) {
+					if (isConditionSatisfied($condition)) {
+						$configurationParameters .= '&' . urlencode($variableName . '[' . $databaseName . ']') . '=' . urlencode($condition['value']);
+						$conditionSatisfied = TRUE;
+						break;
+					}
 				}
-				else {
+				// Keep track whether potential pz:allow commands were not allowed.
+				if (!$conditionSatisfied && $variableName === 'pz:allow') {
 					$usingAllServers = 0;
 				}
 			}
 		}
 	}
-	
+
 	$result = initialisePazpar2($serviceName, $configurationParameters);
-	
+
 	if ($result['httpStatus'] == 200 && array_key_exists($serviceName, $serviceConfig)) {
 		$initXML = $result['initXML'];
 		$accessRightsElement = $initXML->createElement('accessRights');
 		$initXML->firstChild->appendChild($accessRightsElement);
-		
-		$institutionElement = $initXML->createElement('institutionName');
-		$accessRightsElement->appendChild($institutionElement);
-		$institutionElement->appendChild($initXML->createTextNode($accessRights['institutionName']));
 
-		
+		global $GBVAccessInfo;
+		if ($GBVAccessInfo && array_key_exists('institutionName', $GBVAccessInfo)) {
+			$institutionElement = $initXML->createElement('institutionName');
+			$accessRightsElement->appendChild($institutionElement);
+			$institutionElement->appendChild($initXML->createTextNode($GBVAccessInfo['institutionName']));
+		}
+
 		$allServers = $initXML->createElement('allTargetsActive');
 		$allServers->appendChild($initXML->createTextNode($usingAllServers));
 		$accessRightsElement->appendChild($allServers);
 
-		$result['content'] = $initXML->saveXML();		
+		$result['content'] = $initXML->saveXML();
 	}
 
 	return $result;
+}
+
+
+
+/**
+ * Returns whether the passed condition is satisfied.
+ * This is done by calling helper functions for the known types.
+ *
+ * @param Array $type with 'type', 'condition' and 'value' fields
+ * @return boolean
+ */
+function isConditionSatisfied ($condition) {
+	$satisfied = FALSE;
+
+	if (!array_key_exists('conditionType', $condition)) {
+		// There is no condition, so it is satisfied.
+		$satisfied = TRUE;
+	}
+	else if ($condition['conditionType'] === 'IP') {
+		$satisfied = isIPConditionSatisfied($condition['condition']);
+	}
+	else if ($condition['conditionType'] === 'GBV') {
+		$satisfied = isGBVConditionSatisfied($condition['condition']);
+	}
+
+	return $satisfied;
+}
+
+
+
+/**
+ * Determines whether the passed condition on IP addresses is satisfield.
+ * The passed condition is expected to be an array of strings.
+ * Each of those strings is used as a regular expression to match
+ * against the user’s IP address.
+ *
+ * @param Array $condition of strings
+ * @return boolean
+ */
+function isIPConditionSatisfied ($condition) {
+	$satisfied = FALSE;
+	$clientIP = clientIPAddress();
+
+	foreach ($condition as $IPPattern) {
+		if (preg_match('/' . $IPPattern . '/', $clientIP) === 1) {
+			$satisfied = TRUE;
+			break;
+		}
+	}
+
+	return $satisfied;
+}
+
+
+
+/**
+ * Determines whether the client is permitted to access the GBV database
+ * with the ID string (e.g. '2.3') passed in the condition parameter.
+ *
+ * @param string $condition GBV database ID
+ * @return boolean
+ */
+function isGBVConditionSatisfied ($condition) {
+	$satisfied = FALSE;
+
+	$GBVAccessInfo = GBVAccessInfo();
+	if ($GBVAccessInfo) {
+		$wantDatabaseID = $condition;
+		if (in_array($condition, $GBVAccessInfo['permittedDatabases'])) {
+			$satisfied = TRUE;
+		}
+	}
+
+	return $satisfied;
 }
 
 
@@ -141,7 +238,7 @@ function initialisePazpar2 ($service, $parameters = '') {
 	if ($result['httpStatus'] == 200) {
 		$initXML = new DOMDocument();
 		$initXML->loadXML($result['content']);
-	
+
 		$initXPath = new DOMXpath($initXML);
 		$initElements = $initXPath->query('/init');
 		if ($initElements->length > 0) {
@@ -157,16 +254,33 @@ function initialisePazpar2 ($service, $parameters = '') {
 
 
 
+
 /**
- * Returns information about the GBV databases the user may access. Result is an array containing:
+ * Fetches and returns information about the GBV databases the user may access.
+ * Stores the fetched information in a global variable to ensure we only load it once.
+ */
+function GBVAccessInfo () {
+	global $GBVAccessInfo;
+	if (!$GBVAccessInfo) {
+		$GBVAccessInfo = loadGBVAccessInfo();
+	}
+	return $GBVAccessInfo;
+}
+
+
+
+/**
+ * Loads and returns information about the GBV databases the user may access.
+ * The result is an array containing:
  * - permittedDatabases: Array of strings with Pica Database IDs (Array)
  * - institutionName: GBV’s name for the user’s access group (string)
  * The data for this is provided by GBV’s GSO login service.
  *
  * @return Array
  */
-function getGBVAccessInfo () {
+function loadGBVAccessInfo () {
 	$result = Array();
+
 	$GBVQueryURL = 'http://gso.gbv.de/login/XML=1.0/AUTH?IP=' . clientIPAddress();
 	$GBVResponse = loadURL($GBVQueryURL);
 	$GBVResponseString = $GBVResponse['content'];
@@ -182,7 +296,7 @@ function getGBVAccessInfo () {
 			$GBVDatabaseNames[] = $GBVDatabaseElements->item($i)->textContent;
 		}
 		$result['permittedDatabases'] = $GBVDatabaseNames;
-		
+
 		$institutionElements = $GBVResponseXPath->query('/result/library_name');
 		$institutionName = 'GAST';
 		if ($institutionElements->length > 0) {
@@ -191,7 +305,7 @@ function getGBVAccessInfo () {
 		}
 		$result['institutionName'] = $institutionName;
 	}
-	
+
 	return $result;
 }
 
@@ -205,12 +319,12 @@ function getGBVAccessInfo () {
  */
 function clientIPAddress () {
 	$result = $_SERVER['REMOTE_ADDR'];
-	
+
 	if (array_key_exists('HTTP_X_FORWARDED_FOR', $_SERVER)) {
 		$forwardingHosts = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
 		$result = trim($forwardingHosts[0]);
 	}
-	
+
 	return $result;
 }
 
