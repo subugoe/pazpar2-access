@@ -31,7 +31,9 @@ $serviceConfig = Array(
 	'Neuerwerbungen' => Array(
 		'sru.gbv.de/opac-de-7' => Array(
 			'catalogueURLHintPrefix' => Array(
-				'value' => 'https://opac.sub.uni-goettingen.de/DB=1/PPNSET?PPN=',
+				Array(
+					'value' => 'https://opac.sub.uni-goettingen.de/DB=1/PPNSET?PPN=',
+				)
 			),
 		),
 	),
