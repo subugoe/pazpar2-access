@@ -141,7 +141,7 @@ $databaseDefaults = Array(
 			Array(
 				'conditionType' => 'IP',
 				'condition' => Array('139.20.*'),
-				'value' => 'http://webopac.ub.tu-freiberg.de/libero/WebopacOpenURL.cls?ACTION=DISPLAY&amp;sid=Libero:TUF&amp;RID=',
+				'value' => 'http://webopac.ub.tu-freiberg.de/libero/WebopacOpenURL.cls?ACTION=DISPLAY&sid=Libero:TUF&RID=',
 			),
 		),
 		'pz:name' => Array(
