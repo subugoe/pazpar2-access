@@ -28,14 +28,20 @@ $serviceConfig = Array(
 	'Math-Neuerwerbungen' => Array(
 		'sru.gbv.de/opac-de-7' => 'default',
 	),
+	'Math-Themen' => Array(
+		'sru.gbv.de/opac-de-7' => 'default',
+	),
 	'Neuerwerbungen' => Array(
 		'sru.gbv.de/opac-de-7' => Array(
 			'catalogueURLHintPrefix' => Array(
 				Array(
 					'value' => 'https://opac.sub.uni-goettingen.de/DB=1/PPNSET?PPN=',
-				)
+				),
 			),
 		),
+	),
+	'SUB' => Array(
+		'sru.gbv.de/olc' => 'default',
 	),
 	'all' => Array(
 		'sru.gbv.de/opac-de-7' => 'default',
