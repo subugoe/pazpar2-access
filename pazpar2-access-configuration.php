@@ -16,11 +16,9 @@ $serviceConfig = Array(
 	),
 	'GEO-LEO' => Array(
 		'sru.gbv.de/opac-de-7' => 'default',
-		'z3950.bsz-bw.de:20215/swb' => 'default',
 	),
 	'GEO-LEO-Themen' => Array(
 		'sru.gbv.de/opac-de-7' => 'default',
-		'z3950.bsz-bw.de:20215/swb' => 'default',
 	),
 	'Math' => Array(
 		'sru.gbv.de/opac-de-7' => 'default',
