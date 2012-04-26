@@ -56,6 +56,9 @@ else {
 }
 
 header('HTTP/1.1 ' . $result['httpStatus']);
+// Add Cache-Control header of current pazpar2.
+// (Ideally we’d copy the one we actually receive; They seem to be important for IE9 happiness)
+header('Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0');
 header('Content-type: text/xml');
 echo $result['content'];
 
