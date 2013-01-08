@@ -1,7 +1,7 @@
 # pazpar2-access
 A mechanism to catch [pazpar2](http://www.indexdata.com/pazpar2) init commands to and add additional settings to them (e.g. for activating additional databases or changing XSL parameters) based on the user’s IP address and [GBV](http://www.gbv.de/)’s [GSO login service](http://gso.gbv.de/login/XML=1.0/AUTH?IP=134.76.1.1).
 
-2011-2012 by [Sven-S. Porst](http://earthlingsoft.net/ssp/), [SUB Göttingen](http://www.sub.uni-goettingen.de/) <[porst@sub.uni-goettingen.de](mailto:porst@sub.uni-goettingen.de?subject=pazpar2-access)>
+2011-2013 by [Sven-S. Porst](http://earthlingsoft.net/ssp/), [SUB Göttingen](http://www.sub.uni-goettingen.de/) <[porst@sub.uni-goettingen.de](mailto:porst@sub.uni-goettingen.de?subject=pazpar2-access)>
 
 Repository [available at github](https://github.com/ssp/pazpar2-access).
 

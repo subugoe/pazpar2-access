@@ -1,5 +1,10 @@
 <?php
 
+$goettingenIPs = Array('134.76.*');
+$freibergIPs = Array('139.20.*');
+$hannoverIPs = Array('130.75.*','194.95.11[2345].*', '194.95.15[6789].*');
+
+
 $serviceConfig = Array(
 	'AAC' => Array(
 		'sru.gbv.de/opac-de-7' => 'default',
@@ -22,12 +27,14 @@ $serviceConfig = Array(
 	),
 	'Math' => Array(
 		'sru.gbv.de/opac-de-7' => 'default',
+		'sru.gbv.de/gvk-tib' => 'default',
 	),
 	'Math-Neuerwerbungen' => Array(
 		'sru.gbv.de/opac-de-7' => 'default',
 	),
 	'Math-Themen' => Array(
 		'sru.gbv.de/opac-de-7' => 'default',
+		'sru.gbv.de/gvk-tib' => 'default',
 	),
 	'Neuerwerbungen' => Array(
 		'sru.gbv.de/opac-de-7' => Array(
@@ -59,15 +66,31 @@ $databaseDefaults = Array(
 		'catalogueURLHintPrefix' => Array(
 			Array(
 				'conditionType' => 'IP',
-				'condition' => Array('134.76.*'),
+				'condition' => $goettingenIPs,
 				'value' => 'https://opac.sub.uni-goettingen.de/DB=1/PPNSET?PPN=',
 			),
 		),
 		'pz:name' => Array(
 			Array(
 				'conditionType' => 'IP',
-				'condition' => Array('134.76.*'),
+				'condition' => $goettingenIPs,
 				'value' => 'SUB Göttingen',
+			),
+		),
+	),
+	'sru.gbv.de/gvk-tib' => Array(
+		'catalogueURLHintPrefix' => Array(
+			Array(
+				'conditionType' => 'IP',
+				'condition' => $hannoverIPs,
+				'value' => 'http://opac.tib.uni-hannover.de/DB=1/PPNSET?PPN='
+			),
+		),
+		'pz:name' => Array(
+			Array(
+				'conditionType' => 'IP',
+				'condition' => $hannoverIPs,
+				'value' => 'TIB Hannover'
 			),
 		),
 	),
@@ -138,14 +161,14 @@ $databaseDefaults = Array(
 		'catalogueURLHintPrefix' => Array(
 			Array(
 				'conditionType' => 'IP',
-				'condition' => Array('139.20.*'),
+				'condition' => $freibergIPs,
 				'value' => 'http://webopac.ub.tu-freiberg.de/libero/WebopacOpenURL.cls?ACTION=DISPLAY&sid=Libero:TUF&RID=',
 			),
 		),
 		'pz:name' => Array(
 			Array(
 				'conditionType' => 'IP',
-				'condition' => Array('139.20.*'),
+				'condition' => $freibergIPs,
 				'value' => 'Freiberg',
 			),
 		),
