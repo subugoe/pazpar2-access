@@ -13,7 +13,7 @@
  * Please refer to the readme or github page for further information on the configuration.
  * https://github.com/ssp/pazpar2-access
  *
- * 2011-2012 by Sven-S. Porst, SUB Göttingen <porst@sub.uni-goettingen.de>
+ * 2011-2013 by Sven-S. Porst, SUB Göttingen <porst@sub.uni-goettingen.de>
  */
 
 
@@ -327,7 +327,10 @@ function clientIPAddress () {
 
 	if (array_key_exists('HTTP_X_FORWARDED_FOR', $_SERVER)) {
 		$forwardingHosts = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
-		$result = trim($forwardingHosts[0]);
+		$firstAddress = trim($forwardingHosts[0]);
+		if (strpos($firstAddress, '10.') !== 0 && strpos($firstAddress, '192.168') !== 0) {
+			$result = $firstAddress;
+		}
 	}
 
 	return $result;
