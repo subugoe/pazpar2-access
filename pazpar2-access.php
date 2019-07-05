@@ -16,7 +16,7 @@
  * 2011-2013 by Sven-S. Porst, SUB Göttingen <porst@sub.uni-goettingen.de>
  */
 
-
+error_reporting(E_ERROR);
 
 // Load configuration which defines the $serviceConfig and $GBVDatabaseMapping arrays.
 include('./pazpar2-access-configuration.php');
@@ -328,7 +328,31 @@ function clientIPAddress () {
 	if (array_key_exists('HTTP_X_FORWARDED_FOR', $_SERVER)) {
 		$forwardingHosts = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
 		$firstAddress = trim($forwardingHosts[0]);
-		if (strpos($firstAddress, '10.') !== 0 && strpos($firstAddress, '192.168') !== 0) {
+        /*
+         * 2015-10-26, Arash Edit, added another local subnet
+         * if (strpos($firstAddress, '10.') !== 0 && strpos($firstAddress, '192.168') !== 0) {
+			$result = $firstAddress;
+        }*/
+		if (strpos($firstAddress, '10.') !== 0
+			&& strpos($firstAddress, '192.168.') !== 0
+			&& strpos($firstAddress, '127.') !== 0
+			&& strpos($firstAddress, '172.16.') !== 0
+			&& strpos($firstAddress, '172.17.') !== 0
+			&& strpos($firstAddress, '172.18.') !== 0
+			&& strpos($firstAddress, '172.19.') !== 0
+			&& strpos($firstAddress, '172.20.') !== 0
+			&& strpos($firstAddress, '172.21.') !== 0
+			&& strpos($firstAddress, '172.22.') !== 0
+			&& strpos($firstAddress, '172.23.') !== 0
+			&& strpos($firstAddress, '172.24.') !== 0
+			&& strpos($firstAddress, '172.25.') !== 0
+			&& strpos($firstAddress, '172.26.') !== 0
+			&& strpos($firstAddress, '172.27.') !== 0
+			&& strpos($firstAddress, '172.28.') !== 0
+			&& strpos($firstAddress, '172.29.') !== 0
+			&& strpos($firstAddress, '172.30.') !== 0
+			&& strpos($firstAddress, '172.31.') !== 0
+		) {
 			$result = $firstAddress;
 		}
 	}
