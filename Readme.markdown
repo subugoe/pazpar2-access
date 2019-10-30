@@ -1,3 +1,6 @@
+# Repository moved!
+The new location is at [GWDG GitLab](https://gitlab.gwdg.de/subugoe/pazpar2/pazpar2-access).
+
 # pazpar2-access
 A mechanism to catch [pazpar2](http://www.indexdata.com/pazpar2) init commands to and add additional settings to them (e.g. for activating additional databases or changing XSL parameters) based on the user’s IP address and [GBV](http://www.gbv.de/)’s [GSO login service](http://gso.gbv.de/login/XML=1.0/AUTH?IP=134.76.1.1).
 
